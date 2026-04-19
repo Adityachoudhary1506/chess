@@ -5,20 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal | Pathlynx</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
-        rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- ✅ FIXED PATH (adjust if needed) -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body class="auth-body admin-mode">
 
-    <!-- Background Layer -->
     <div class="app-background"></div>
 
     <div class="auth-container">
         <div class="auth-card admin-auth-card">
+
             <!-- Header -->
             <div class="auth-header">
                 <div class="auth-logo">
@@ -32,10 +33,11 @@
                 </div>
             </div>
 
-            <!-- Login Form -->
+            <!-- ✅ FORM START -->
             <form id="admin-login-form">
+
                 <div class="input-group">
-                    <label for="admin-id">Admin Username / Email</label>
+                    <label>Admin Username / Email</label>
                     <div class="icon-input">
                         <span class="material-icons-round input-icon">badge</span>
                         <input type="text" id="admin-id" placeholder="admin@pathlynx.edu" required>
@@ -43,43 +45,61 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="password">Password</label>
+                    <label>Password</label>
                     <div class="icon-input password-group">
                         <span class="material-icons-round input-icon">vpn_key</span>
                         <input type="password" id="password" placeholder="Enter secure password" required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()">
+
+                        <button type="button" onclick="togglePassword()">
                             <span class="material-icons-round" id="eye-icon">visibility_off</span>
                         </button>
                     </div>
                 </div>
 
                 <div class="form-options">
-                    <!-- Reduced options for admin security -->
                     <a href="#" class="forgot-link" style="margin-left:auto;">Forgot Password?</a>
                 </div>
-                style="display: inline-block; width: auto; color: #856404; border-color: #856404;">Create Admin
-                Account</a>
-        </div>
-        </form>
 
+                <!-- ✅ FIXED BUTTON (IMPORTANT) -->
+                <button type="submit" class="btn-admin-action">
+                    Login
+                </button>
+
+                <!-- ✅ FIXED CREATE ADMIN LINK -->
+                <div style="text-align:center; margin-top:10px;">
+                    <a href="admin-register.html"
+                        style="display:inline-block; color:#856404; font-weight:500;">
+                        Create Admin Account
+                    </a>
+                </div>
+
+            </form>
+            <!-- ✅ FORM END -->
+
+        </div>
+
+        <!-- Footer -->
         <div class="auth-footer">
-            <p class="admin-help-text" style="display: block; margin-bottom: 0.5rem;">Don't have an admin account?
-                <a href="admin-register.html" style="color: var(--primary-color); font-weight: 600;">Create one</a>
+            <p>
+                Don't have an admin account?
+                <a href="admin-register.html">Create one</a>
             </p>
-            <p class="admin-help-text"><span class="material-icons-round"
-                    style="font-size:1rem; vertical-align:middle;">help_outline</span> Contact IT Support for access
-                issues.</p>
+            <p>
+                <span class="material-icons-round">help_outline</span>
+                Contact IT Support for access issues.
+            </p>
         </div>
-    </div>
+
     </div>
 
+    <!-- Scripts -->
     <script type="module" src="js/firebase-config.js"></script>
-    <script type="module">
-        import './js/firebase-config.js';
 
+    <script>
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const eyeIcon = document.getElementById('eye-icon');
+
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 eyeIcon.textContent = 'visibility';
@@ -88,61 +108,7 @@
                 eyeIcon.textContent = 'visibility_off';
             }
         }
-        // Expose toggle globally since it's called from HTML onclick
-        window.togglePassword = togglePassword;
-
-        document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const email = document.getElementById('admin-id').value;
-            const password = document.getElementById('password').value;
-            const btn = document.querySelector('.btn-admin-action');
-            const originalText = btn.innerHTML;
-
-            btn.innerHTML = '<span class="material-icons-round spin">sync</span> Verifying...';
-            btn.disabled = true;
-
-            try {
-                const auth = window.auth;
-                const db = window.db;
-
-                // 1. Firebase Auth Login
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-
-                // 2. Check Admin Role in Firestore
-                const docSnap = await db.collection("admins").doc(user.uid).get();
-
-                if (docSnap.exists && docSnap.data().role === 'admin') {
-                    // Success: Cache minimal data for synchronous checks on dashboard
-                    const adminProfile = {
-                        _id: user.uid,
-                        email: user.email,
-                        ...docSnap.data()
-                    };
-                    localStorage.setItem('Admin', JSON.stringify(adminProfile));
-                    window.location.href = 'admin-dashboard.html';
-                } else {
-                    alert('Access Denied: Not an Administrator account.');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-
-            } catch (error) {
-                console.error("Login Error:", error);
-                let msg = "Login failed. Please check credentials.";
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                    msg = "Invalid email or password.";
-                    // Show prompt if needed
-                    const prompt = document.getElementById("admin-create-account-prompt");
-                    if (prompt) prompt.style.display = "block";
-                }
-                alert(msg);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
     </script>
-</body>
 
+</body>
 </html>
