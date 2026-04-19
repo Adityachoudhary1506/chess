@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile | Admin View</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .profile-header-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .ph-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #eee;
+            background-size: cover;
+            background-position: center;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .ph-info h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.8rem;
+            color: #333;
+        }
+
+        .ph-meta {
+            display: flex;
+            gap: 1rem;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .data-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .data-card h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .field-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 0.3rem;
+        }
+
+        .field-group div {
+            font-weight: 500;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: #eef2ff;
+            color: var(--primary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #666;
+            text-decoration: none;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body class="admin-body">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <span class="material-icons-round">terminal</span>
+                <span>Path<span class="highlight-white">lynx</span></span>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="admin-dashboard.html" class="menu-item"><span
+                        class="material-icons-round">dashboard</span>Dashboard</a>
+                <a href="admin-students.html" class="menu-item active"><span
+                        class="material-icons-round">people</span>Students</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <a href="admin-students.html" class="back-btn">
+                <span class="material-icons-round">arrow_back</span> Back to List
+            </a>
+
+            <div id="profile-content">
+                <div style="text-align:center; padding:3rem;">Loading Profile...</div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module">
+        import './js/firebase-config.js';
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Wait for Globals
+            setTimeout(async () => {
+                const db = window.db;
+                if (!db) {
+                    console.error("DB not ready");
+                    return;
+                }
+
+                // 1. Check Admin Auth
+                const auth = window.auth;
+                // Simple auth check - reliable method is onAuthStateChanged, but local check is faster for UI
+                if (!localStorage.getItem("Admin")) {
+                    window.location.href = "admin-login.html";
+                    return;
+                }
+
+                // 2. Get ID or Enrollment from URL
+                const params = new URLSearchParams(window.location.search);
+                const docId = params.get("id");
+                const enrollmentNo = params.get("enrollment");
+
+                const container = document.getElementById("profile-content");
+
+                if (!docId && !enrollmentNo) {
+                    showError("No student identifier provided.");
+                    return;
+                }
+
+                console.log("Fetching profile...", docId || enrollmentNo);
+
+                // 3. Fetch Data
+                try {
+                    let studentData = null;
+
+                    if (docId) {
+                        const docSnap = await db.collection("students").doc(docId).get();
+                        if (docSnap.exists) {
+                            studentData = docSnap.data();
+                        }
+                    } else if (enrollmentNo) {
+                        const q = db.collection("students").where("enrollmentNo", "==", enrollmentNo);
+                        const querySnapshot = await q.get();
+                        if (!querySnapshot.empty) {
+                            studentData = querySnapshot.docs[0].data();
+                        }
+                    }
+
+                    if (!studentData) {
+                        throw new Error("Student not found in database.");
+                    }
+
+                    renderProfile(studentData);
+
+                } catch (err) {
+                    console.error("Profile Load Error:", err);
+                    showError(err.message);
+                }
+            }, 500); // Buffer for config load
+
+            function showError(msg) {
+                const container = document.getElementById("profile-content");
+                container.innerHTML = `<div style="text-align:center; padding:2rem; color:red;">
+                    <h2>Error</h2>
+                    <p>${msg}</p>
+                    <a href="admin-dashboard.html" class="btn-primary" style="margin-top:1rem; display:inline-block;">Go Dashboard</a>
+                </div>`;
+            }
+
+            // 4. Render Data
+            function renderProfile(st) {
+                const container = document.getElementById("profile-content");
+                // Handle photos/resumes that might be URLs or paths
+                const photoUrl = st.photo && st.photo.startsWith('http') ? st.photo : 'assets/students.png';
+                const resumeUrl = st.resume || '#';
+
+                const skillsHtml = st.skills
+                    ? (Array.isArray(st.skills) ? st.skills : st.skills.split(",")).map(s => `<span class="tag">${(s.trim ? s.trim() : s)}</span>`).join("")
+                    : '<span style="color:#999">No skills listed</span>';
+
+                container.innerHTML = `
+                    <!-- Header -->
+                    <div class="profile-header-card">
+                        <div class="ph-avatar" style="background-image: url('${photoUrl}')"></div>
+                        <div class="ph-info">
+                            <h1>${st.fullName || 'N/A'}</h1>
+                            <div class="ph-meta">
+                                <span><span class="material-icons-round" style="font-size:1rem; vertical-align:text-bottom;">badge</span> ${st.enrollmentNo || '-'}</span>
+                                <span><span class="material-icons-round" style="font-size:1rem; vertical-align:text-bottom;">school</span> ${st.college || 'Pathlynx Institute'}</span>
+                            </div>
+                            <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+                                ${st.linkedin ? `<a href="${st.linkedin}" target="_blank" class="btn-outline-sm">LinkedIn</a>` : ''}
+                                ${st.github ? `<a href="${st.github}" target="_blank" class="btn-outline-sm">GitHub</a>` : ''}
+                                ${st.portfolio ? `<a href="${st.portfolio}" target="_blank" class="btn-outline-sm">Portfolio</a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Academic Details -->
+                    <div class="data-card">
+                        <h3>Academic Information</h3>
+                        <div class="field-row">
+                            <div class="field-group"><label>Branch</label><div>${st.department || st.branch || '-'}</div></div>
+                            <div class="field-group"><label>Year</label><div>${st.year || '-'}</div></div>
+                            <div class="field-group"><label>CGPA</label><div>${st.cgpa || '-'}</div></div>
+                            <div class="field-group"><label>Email</label><div>${st.email || '-'}</div></div>
+                        </div>
+                    </div>
+
+                    <!-- Professional Details -->
+                    <div class="data-card">
+                        <h3>Professional Profile</h3>
+                        <div class="field-group" style="margin-bottom:1.5rem;">
+                            <label>Bio</label>
+                            <div>${st.bio || 'No bio provided.'}</div>
+                        </div>
+                        <div class="field-group" style="margin-bottom:1.5rem;">
+                            <label>Skills</label>
+                            <div class="tag-cloud">${skillsHtml}</div>
+                        </div>
+                        <div class="field-row">
+                            <div class="field-group">
+                                <label>Achievements</label>
+                                <div style="white-space: pre-wrap;">${st.achievements || '-'}</div>
+                            </div>
+                            <div class="field-group">
+                                <label>Certifications</label>
+                                <div style="white-space: pre-wrap;">${st.certifications || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resume -->
+                    <div class="data-card">
+                        <h3>Resume / CV</h3>
+                        ${st.resume ?
+                        `<div style="display:flex; align-items:center; gap:1rem;">
+                                <span class="material-icons-round" style="color:#ea4335; font-size:2rem;">picture_as_pdf</span>
+                                <div>
+                                    <div style="font-weight:500;">Student Resume</div>
+                                    <a href="${resumeUrl}" target="_blank" style="color:var(--primary-color); font-size:0.9rem;">Download / View</a>
+                                </div>
+                            </div>`
+                        : '<p style="color:#999">No resume uploaded.</p>'}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+
+</html>
